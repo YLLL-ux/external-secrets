@@ -46,11 +46,15 @@ type Reconciler struct {
 	SecretName      string
 	SecretNamespace string
 
-	rdyMu *sync.Mutex
-	ready bool
+	// store state for the readiness probe.
+	// we're ready when we're not the leader or
+	// if we've reconciled the webhook config when we're the leader.
+	leaderChan <-chan struct{}
+	rdyMu      *sync.Mutex
+	ready      bool
 }
 
-func New(k8sClient client.Client, scheme *runtime.Scheme,
+func New(k8sClient client.Client, scheme *runtime.Scheme, leaderChan <-chan struct{},
 	log logr.Logger, svcName, svcNamespace, secretName, secretNamespace string,
 	requeueInterval time.Duration) *Reconciler {
 	return &Reconciler{
@@ -62,6 +66,7 @@ func New(k8sClient client.Client, scheme *runtime.Scheme,
 		SvcNamespace:    svcNamespace,
 		SecretName:      secretName,
 		SecretNamespace: secretNamespace,
+		leaderChan:      leaderChan,
 		rdyMu:           &sync.Mutex{},
 		ready:           false,
 	}
@@ -126,6 +131,16 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, opts controller.Options)
 }
 
 func (r *Reconciler) ReadyCheck(_ *http.Request) error {
+	// skip readiness check if we're not leader
+	// as we depend on caches and being able to reconcile Webhooks
+	if !r.ready {
+		select {
+		case <-r.leaderChan:
+			r.ready = true
+		default:
+			return nil
+		}
+	}
 	r.rdyMu.Lock()
 	defer r.rdyMu.Unlock()
 	if !r.ready {
