@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1beta1 "github.com/external-secrets/external-secrets/apis/externalsecrets/v1beta1"
@@ -53,7 +52,7 @@ func (s *SecretsManager) Capabilities() esv1beta1.SecretStoreCapabilities {
 }
 
 // NewClient constructs a new secrets client based on the provided store.
-func (s *SecretsManager) NewClient(ctx context.Context, store esv1beta1.GenericStore, kube client.Client, namespace string) (esv1beta1.SecretsClient, error) {
+func (s *SecretsManager) NewClient(ctx context.Context, store esv1beta1.GenericStore, kube kclient.Client, namespace string) (esv1beta1.SecretsClient, error) {
 	prov, err := util.GetProvider(store)
 	if err != nil {
 		return nil, err
@@ -214,11 +213,13 @@ func (s *SecretsManager) validateStoreAuth(store esv1beta1.GenericStore) error {
 }
 
 func (s *SecretsManager) validateStoreAccessKeyAuth(store esv1beta1.GenericStore) error {
-	storeSpec := store.GetSpec()
-	tencentSpec := storeSpec.Provider.Tencent
+	tencentSpec, err := util.GetProvider(store)
+	if err != nil {
+		return err
+	}
 
 	accessKeyID := tencentSpec.Auth.SecretRef.AccessKeyID
-	err := utils.ValidateSecretSelector(store, accessKeyID)
+	err = utils.ValidateSecretSelector(store, accessKeyID)
 	if err != nil {
 		return err
 	}
@@ -248,7 +249,7 @@ func (s *SecretsManager) validateStoreAccessKeyAuth(store esv1beta1.GenericStore
 	return nil
 }
 
-func (s *SecretsManager) DeleteSecret(ctx context.Context, remoteRef esv1beta1.PushRemoteRef) error {
+func (s *SecretsManager) DeleteSecret(_ context.Context, _ esv1beta1.PushRemoteRef) error {
 	return fmt.Errorf("not implemented")
 }
 
@@ -307,11 +308,11 @@ func (s *SecretsManager) GetSecretMap(ctx context.Context, ref esv1beta1.Externa
 	return secretData, nil
 }
 
-func (s *SecretsManager) GetAllSecrets(ctx context.Context, ref esv1beta1.ExternalSecretFind) (map[string][]byte, error) {
+func (s *SecretsManager) GetAllSecrets(_ context.Context, _ esv1beta1.ExternalSecretFind) (map[string][]byte, error) {
 	return nil, fmt.Errorf("GetAllSecrets not implemented")
 }
 
-func (s *SecretsManager) PushSecret(ctx context.Context, value []byte, _ corev1.SecretType, _ *apiextensionsv1.JSON, remoteRef esv1beta1.PushRemoteRef) error {
+func (s *SecretsManager) PushSecret(_ context.Context, _ []byte, _ corev1.SecretType, _ *apiextensionsv1.JSON, _ esv1beta1.PushRemoteRef) error {
 	return fmt.Errorf("not implemented")
 }
 

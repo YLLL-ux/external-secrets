@@ -81,6 +81,13 @@ func GetProvider(s GenericStore) (Provider, error) {
 	}
 
 	buildlock.RLock()
+
+	fmt.Printf(">>>>>>> storeName: %s, spec: %#v", storeName, spec)
+
+	for k, v := range builder {
+		fmt.Printf(">>>>>>>> k: %s, v: %#v", k, v)
+	}
+
 	f, ok := builder[storeName]
 	buildlock.RUnlock()
 
