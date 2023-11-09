@@ -2983,6 +2983,7 @@ spec:
                                       type: string
                                   type: object
                               required:
+                                - accessKeyIDSecretRef
                                 - accessKeySecretSecretRef
                               type: object
                           type: object
@@ -2990,6 +2991,7 @@ spec:
                           description: Tencent  Region to be used for the provider
                           type: string
                       required:
+                        - auth
                         - regionID
                       type: object
                     vault:
@@ -6994,6 +6996,7 @@ spec:
                                       type: string
                                   type: object
                               required:
+                                - accessKeyIDSecretRef
                                 - accessKeySecretSecretRef
                               type: object
                           type: object
@@ -7001,6 +7004,7 @@ spec:
                           description: Tencent  Region to be used for the provider
                           type: string
                       required:
+                        - auth
                         - regionID
                       type: object
                     vault:

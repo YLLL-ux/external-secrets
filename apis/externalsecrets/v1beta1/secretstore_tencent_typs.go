@@ -5,20 +5,20 @@ import (
 )
 
 type TencentAuth struct {
-	SecretRef *TencentSecretRef `json:"secretRef,omitempty"`
+	SecretRef *TencentAuthSecretRef `json:"secretRef,omitempty"`
 }
 
 // TencentSecretRef holds secret references for Tencent credentials.
-type TencentSecretRef struct {
+type TencentAuthSecretRef struct {
 	// The AccessKeyID is used for authentication
-	AccessKeyID esmeta.SecretKeySelector `json:"accessKeyIDSecretRef,omitempty"`
+	AccessKeyID esmeta.SecretKeySelector `json:"accessKeyIDSecretRef"`
 	// The AccessKeySecret is used for authentication
 	AccessKeySecret esmeta.SecretKeySelector `json:"accessKeySecretSecretRef"`
 }
 
 // TencentProvider configures a store to sync secrets using the Tencent Secrets Manager.
 type TencentProvider struct {
-	Auth TencentAuth `json:"auth,omitempty"`
+	Auth TencentAuth `json:"auth"`
 	// Tencent  Region to be used for the provider
 	RegionID string `json:"regionID"`
 }
