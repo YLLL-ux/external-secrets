@@ -141,6 +141,10 @@ type SecretStoreProvider struct {
 	// https://docs.delinea.com/online-help/products/devops-secrets-vault/current
 	// +optional
 	Delinea *DelineaProvider `json:"delinea,omitempty"`
+
+	// Tencent configures this store to sync secrets using Tencent Secret Manager provider
+	// +optional
+	Tencent *TencentProvider `json:"tencent,omitempty"`
 }
 
 type CAProviderType string

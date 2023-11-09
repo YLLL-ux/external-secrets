@@ -1262,6 +1262,72 @@ spec:
                         - region
                         - vault
                       type: object
+                    tencent:
+                      description: Tencent configures this store to sync secrets using Tencent Secret Manager provider
+                      properties:
+                        auth:
+                          properties:
+                            secretRef:
+                              description: TencentSecretRef holds secret references for Tencent credentials.
+                              properties:
+                                accessKeyIDSecretRef:
+                                  description: The AccessKeyID is used for authentication
+                                  properties:
+                                    key:
+                                      description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                      type: string
+                                    name:
+                                      description: The name of the Secret resource being referred to.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                      type: string
+                                  type: object
+                                accessKeySecretSecretRef:
+                                  description: The AccessKeySecret is used for authentication
+                                  properties:
+                                    key:
+                                      description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                      type: string
+                                    name:
+                                      description: The name of the Secret resource being referred to.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                      type: string
+                                  type: object
+                              required:
+                                - accessKeyIDSecretRef
+                                - accessKeySecretSecretRef
+                              type: object
+                            serviceAccountRef:
+                              description: A reference to a ServiceAccount resource.
+                              properties:
+                                audiences:
+                                  description: Audience specifies the `aud` claim for the service account token If the service account uses a well-known annotation for e.g. IRSA or GCP Workload Identity then this audiences will be appended to the list
+                                  items:
+                                    type: string
+                                  type: array
+                                name:
+                                  description: The name of the ServiceAccount resource being referred to.
+                                  type: string
+                                namespace:
+                                  description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                  type: string
+                              required:
+                                - name
+                              type: object
+                          type: object
+                        regionID:
+                          description: Tencent  Region to be used for the provider
+                          type: string
+                        role:
+                          description: Role is a Role ARN which the SecretManager provider will assume
+                          type: string
+                      required:
+                        - auth
+                        - regionID
+                      type: object
                     vault:
                       description: Vault configures this store to sync secrets using Hashi provider
                       properties:
@@ -2903,6 +2969,72 @@ spec:
                         - auth
                         - module
                         - url
+                      type: object
+                    tencent:
+                      description: Tencent configures this store to sync secrets using Tencent Secret Manager provider
+                      properties:
+                        auth:
+                          properties:
+                            secretRef:
+                              description: TencentSecretRef holds secret references for Tencent credentials.
+                              properties:
+                                accessKeyIDSecretRef:
+                                  description: The AccessKeyID is used for authentication
+                                  properties:
+                                    key:
+                                      description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                      type: string
+                                    name:
+                                      description: The name of the Secret resource being referred to.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                      type: string
+                                  type: object
+                                accessKeySecretSecretRef:
+                                  description: The AccessKeySecret is used for authentication
+                                  properties:
+                                    key:
+                                      description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                      type: string
+                                    name:
+                                      description: The name of the Secret resource being referred to.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                      type: string
+                                  type: object
+                              required:
+                                - accessKeyIDSecretRef
+                                - accessKeySecretSecretRef
+                              type: object
+                            serviceAccountRef:
+                              description: A reference to a ServiceAccount resource.
+                              properties:
+                                audiences:
+                                  description: Audience specifies the `aud` claim for the service account token If the service account uses a well-known annotation for e.g. IRSA or GCP Workload Identity then this audiences will be appended to the list
+                                  items:
+                                    type: string
+                                  type: array
+                                name:
+                                  description: The name of the ServiceAccount resource being referred to.
+                                  type: string
+                                namespace:
+                                  description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                  type: string
+                              required:
+                                - name
+                              type: object
+                          type: object
+                        regionID:
+                          description: Tencent  Region to be used for the provider
+                          type: string
+                        role:
+                          description: Role is a Role ARN which the SecretManager provider will assume
+                          type: string
+                      required:
+                        - auth
+                        - regionID
                       type: object
                     vault:
                       description: Vault configures this store to sync secrets using Hashi provider
@@ -5185,6 +5317,72 @@ spec:
                         - region
                         - vault
                       type: object
+                    tencent:
+                      description: Tencent configures this store to sync secrets using Tencent Secret Manager provider
+                      properties:
+                        auth:
+                          properties:
+                            secretRef:
+                              description: TencentSecretRef holds secret references for Tencent credentials.
+                              properties:
+                                accessKeyIDSecretRef:
+                                  description: The AccessKeyID is used for authentication
+                                  properties:
+                                    key:
+                                      description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                      type: string
+                                    name:
+                                      description: The name of the Secret resource being referred to.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                      type: string
+                                  type: object
+                                accessKeySecretSecretRef:
+                                  description: The AccessKeySecret is used for authentication
+                                  properties:
+                                    key:
+                                      description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                      type: string
+                                    name:
+                                      description: The name of the Secret resource being referred to.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                      type: string
+                                  type: object
+                              required:
+                                - accessKeyIDSecretRef
+                                - accessKeySecretSecretRef
+                              type: object
+                            serviceAccountRef:
+                              description: A reference to a ServiceAccount resource.
+                              properties:
+                                audiences:
+                                  description: Audience specifies the `aud` claim for the service account token If the service account uses a well-known annotation for e.g. IRSA or GCP Workload Identity then this audiences will be appended to the list
+                                  items:
+                                    type: string
+                                  type: array
+                                name:
+                                  description: The name of the ServiceAccount resource being referred to.
+                                  type: string
+                                namespace:
+                                  description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                  type: string
+                              required:
+                                - name
+                              type: object
+                          type: object
+                        regionID:
+                          description: Tencent  Region to be used for the provider
+                          type: string
+                        role:
+                          description: Role is a Role ARN which the SecretManager provider will assume
+                          type: string
+                      required:
+                        - auth
+                        - regionID
+                      type: object
                     vault:
                       description: Vault configures this store to sync secrets using Hashi provider
                       properties:
@@ -6826,6 +7024,72 @@ spec:
                         - auth
                         - module
                         - url
+                      type: object
+                    tencent:
+                      description: Tencent configures this store to sync secrets using Tencent Secret Manager provider
+                      properties:
+                        auth:
+                          properties:
+                            secretRef:
+                              description: TencentSecretRef holds secret references for Tencent credentials.
+                              properties:
+                                accessKeyIDSecretRef:
+                                  description: The AccessKeyID is used for authentication
+                                  properties:
+                                    key:
+                                      description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                      type: string
+                                    name:
+                                      description: The name of the Secret resource being referred to.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                      type: string
+                                  type: object
+                                accessKeySecretSecretRef:
+                                  description: The AccessKeySecret is used for authentication
+                                  properties:
+                                    key:
+                                      description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                      type: string
+                                    name:
+                                      description: The name of the Secret resource being referred to.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                      type: string
+                                  type: object
+                              required:
+                                - accessKeyIDSecretRef
+                                - accessKeySecretSecretRef
+                              type: object
+                            serviceAccountRef:
+                              description: A reference to a ServiceAccount resource.
+                              properties:
+                                audiences:
+                                  description: Audience specifies the `aud` claim for the service account token If the service account uses a well-known annotation for e.g. IRSA or GCP Workload Identity then this audiences will be appended to the list
+                                  items:
+                                    type: string
+                                  type: array
+                                name:
+                                  description: The name of the ServiceAccount resource being referred to.
+                                  type: string
+                                namespace:
+                                  description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                  type: string
+                              required:
+                                - name
+                              type: object
+                          type: object
+                        regionID:
+                          description: Tencent  Region to be used for the provider
+                          type: string
+                        role:
+                          description: Role is a Role ARN which the SecretManager provider will assume
+                          type: string
+                      required:
+                        - auth
+                        - regionID
                       type: object
                     vault:
                       description: Vault configures this store to sync secrets using Hashi provider

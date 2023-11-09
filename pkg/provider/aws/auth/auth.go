@@ -92,6 +92,7 @@ func New(ctx context.Context, store esv1beta1.GenericStore, kube client.Client, 
 	// use credentials via service account token
 	jwtAuth := prov.Auth.JWTAuth
 	if jwtAuth != nil {
+		// 从ServiceAccount中获取凭据
 		creds, err = credsFromServiceAccount(ctx, prov.Auth, prov.Region, isClusterKind, kube, namespace, jwtProvider)
 		if err != nil {
 			return nil, err
@@ -102,6 +103,7 @@ func New(ctx context.Context, store esv1beta1.GenericStore, kube client.Client, 
 	secretRef := prov.Auth.SecretRef
 	if secretRef != nil {
 		log.V(1).Info("using credentials from secretRef")
+		// 从SecretRef中获取凭据
 		creds, err = credsFromSecretRef(ctx, prov.Auth, isClusterKind, kube, namespace)
 		if err != nil {
 			return nil, err
