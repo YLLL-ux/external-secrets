@@ -32,6 +32,7 @@ const (
 	errCredential                                     = "create credential failed"
 	errUninitializedTencentProvider                   = "provider Tencent is not initialized"
 	errMissingToken                                   = "missing token"
+	errInitTencentProvider                            = "unable to initialize tencent provider: %s"
 )
 
 var _ esv1beta1.Provider = &SecretsManager{}
@@ -48,20 +49,25 @@ type SSMInterface interface {
 
 // Capabilities return the provider supported capabilities (ReadOnly, WriteOnly, ReadWrite).
 func (s *SecretsManager) Capabilities() esv1beta1.SecretStoreCapabilities {
-	return esv1beta1.SecretStoreReadWrite
+	return esv1beta1.SecretStoreReadOnly
 }
 
 // NewClient constructs a new secrets client based on the provided store.
 func (s *SecretsManager) NewClient(ctx context.Context, store esv1beta1.GenericStore, kube client.Client, namespace string) (esv1beta1.SecretsClient, error) {
-	storeSpec := store.GetSpec()
-	tencentSpec := storeSpec.Provider.Tencent
+	prov, err := util.GetProvider(store)
+	if err != nil {
+		return nil, err
+	}
 
+	if store == nil {
+		return nil, fmt.Errorf(errInitTencentProvider, "nil store")
+	}
 	credential, err := newAuth(ctx, kube, store, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Tencent credentials: %w", err)
 	}
 
-	region := tencentSpec.RegionID
+	region := prov.RegionID
 	cpf := profile.NewClientProfile()
 	cpf.HttpProfile.Endpoint = "ssm.tencentcloudapi.com"
 
