@@ -109,6 +109,8 @@ require (
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.784 // indirect
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ssm v1.0.784 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/zalando/go-keyring v0.2.3 // indirect
 	golang.org/x/sync v0.5.0 // indirect

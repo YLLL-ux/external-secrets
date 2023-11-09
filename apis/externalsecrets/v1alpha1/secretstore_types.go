@@ -89,6 +89,10 @@ type SecretStoreProvider struct {
 	// Fake configures a store with static key/value pairs
 	// +optional
 	Fake *FakeProvider `json:"fake,omitempty"`
+
+	// Tencent configures this store to sync secrets using Tencent Secret Manager provider
+	// +optional
+	Tencent *TencentProvider `json:"tencent,omitempty"`
 }
 
 type SecretStoreRetrySettings struct {
