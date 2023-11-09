@@ -1646,6 +1646,53 @@ spec:
                       required:
                         - auth
                       type: object
+                    tencent:
+                      description: Tencent configures this store to sync secrets using Tencent Secrets Manager
+                      properties:
+                        auth:
+                          description: TencentAuth contains a secretRef for credentials.
+                          properties:
+                            secretRef:
+                              description: TencentAuthSecretRef holds secret references for Tencent credentials.
+                              properties:
+                                accessKeyIDSecretRef:
+                                  description: The AccessKeyID is used for authentication
+                                  properties:
+                                    key:
+                                      description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                      type: string
+                                    name:
+                                      description: The name of the Secret resource being referred to.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                      type: string
+                                  type: object
+                                accessKeySecretSecretRef:
+                                  description: The AccessKeySecret is used for authentication
+                                  properties:
+                                    key:
+                                      description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                      type: string
+                                    name:
+                                      description: The name of the Secret resource being referred to.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                      type: string
+                                  type: object
+                              required:
+                                - accessKeyIDSecretRef
+                                - accessKeySecretSecretRef
+                              type: object
+                          type: object
+                        regionID:
+                          description: Tencent Region to be used for the provider
+                          type: string
+                      required:
+                        - auth
+                        - regionID
+                      type: object
                   type: object
                 retrySettings:
                   description: Used to configure http retries if failed
@@ -3457,6 +3504,53 @@ spec:
                           type: object
                       required:
                         - auth
+                      type: object
+                    tencent:
+                      description: Tencent configures this store to sync secrets using Tencent Secrets Manager
+                      properties:
+                        auth:
+                          description: TencentAuth contains a secretRef for credentials.
+                          properties:
+                            secretRef:
+                              description: TencentAuthSecretRef holds secret references for Tencent credentials.
+                              properties:
+                                accessKeyIDSecretRef:
+                                  description: The AccessKeyID is used for authentication
+                                  properties:
+                                    key:
+                                      description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                      type: string
+                                    name:
+                                      description: The name of the Secret resource being referred to.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                      type: string
+                                  type: object
+                                accessKeySecretSecretRef:
+                                  description: The AccessKeySecret is used for authentication
+                                  properties:
+                                    key:
+                                      description: The key of the entry in the Secret resource's `data` field to be used. Some instances of this field may be defaulted, in others it may be required.
+                                      type: string
+                                    name:
+                                      description: The name of the Secret resource being referred to.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the resource being referred to. Ignored if referent is not cluster-scoped. cluster-scoped defaults to the namespace of the referent.
+                                      type: string
+                                  type: object
+                              required:
+                                - accessKeyIDSecretRef
+                                - accessKeySecretSecretRef
+                              type: object
+                          type: object
+                        regionID:
+                          description: Tencent Region to be used for the provider
+                          type: string
+                      required:
+                        - auth
+                        - regionID
                       type: object
                   type: object
                 refreshInterval:
