@@ -99,12 +99,13 @@ func newAccessKeyAuth(ctx context.Context, kube kclient.Client, store esv1beta1.
 	tencentSpec := storeSpec.Provider.Tencent
 	storeKind := store.GetObjectKind().GroupVersionKind().Kind
 
-	credentialsSecretNameForID := tencentSpec.Auth.SecretRef.AccessKeyID.Name
-	if credentialsSecretNameForID == "" {
+	credentialsSecret := &corev1.Secret{}
+	credentialsSecretName := tencentSpec.Auth.SecretRef.AccessKeyID.Name
+	if credentialsSecretName == "" {
 		return nil, fmt.Errorf(errTencentCredSecretName)
 	}
 	objectKey := types.NamespacedName{
-		Name:      credentialsSecretNameForID,
+		Name:      credentialsSecretName,
 		Namespace: namespace,
 	}
 
@@ -116,18 +117,13 @@ func newAccessKeyAuth(ctx context.Context, kube kclient.Client, store esv1beta1.
 		objectKey.Namespace = *tencentSpec.Auth.SecretRef.AccessKeyID.Namespace
 	}
 
-	credentialsSecret := &corev1.Secret{}
 	err := kube.Get(ctx, objectKey, credentialsSecret)
 	if err != nil {
 		return nil, fmt.Errorf(errFetchAccessKeyIDSecret, err)
 	}
 
-	credentialsSecretNameForSecret := tencentSpec.Auth.SecretRef.AccessKeySecret.Name
-	if credentialsSecretNameForSecret == "" {
-		return nil, fmt.Errorf(errTencentCredSecretName)
-	}
 	objectKey = types.NamespacedName{
-		Name:      credentialsSecretNameForSecret,
+		Name:      tencentSpec.Auth.SecretRef.AccessKeySecret.Name,
 		Namespace: namespace,
 	}
 
@@ -137,22 +133,22 @@ func newAccessKeyAuth(ctx context.Context, kube kclient.Client, store esv1beta1.
 		}
 		objectKey.Namespace = *tencentSpec.Auth.SecretRef.AccessKeySecret.Namespace
 	}
-	err = kube.Get(ctx, objectKey, credentialsSecret)
-	if err != nil {
-		return nil, fmt.Errorf(errFetchAccessKeyIDSecret, err)
-	}
 
-	accessKeyID := credentialsSecret.Data[tencentSpec.Auth.SecretRef.AccessKeyID.Key]
-	if (accessKeyID == nil) || (len(accessKeyID) == 0) {
-		return nil, fmt.Errorf(errMissingAccessKeyID)
-	}
+	// accessKeyID := credentialsSecret.Data[tencentSpec.Auth.SecretRef.AccessKeyID.Key]
+	// if (accessKeyID == nil) || (len(accessKeyID) == 0) {
+	// 	return nil, fmt.Errorf(errMissingAccessKeyID)
+	// }
 
-	accessKeySecret := credentialsSecret.Data[tencentSpec.Auth.SecretRef.AccessKeySecret.Key]
-	if (accessKeySecret == nil) || (len(accessKeySecret) == 0) {
-		return nil, fmt.Errorf(errMissingAccessKey)
-	}
+	// accessKeySecret := credentialsSecret.Data[tencentSpec.Auth.SecretRef.AccessKeySecret.Key]
+	// if (accessKeySecret == nil) || (len(accessKeySecret) == 0) {
+	// 	return nil, fmt.Errorf(errMissingAccessKey)
+	// }
 
-	return newCredential(utils.Ptr(string(accessKeyID)), utils.Ptr(string(accessKeySecret)))
+	// return newCredential(utils.Ptr(string(accessKeyID)), utils.Ptr(string(accessKeySecret)))
+
+	accessKeyID := tencentSpec.Auth.SecretRef.AccessKeyID.Key
+	accessKeySecret := tencentSpec.Auth.SecretRef.AccessKeySecret.Key
+	return newCredential(utils.Ptr(accessKeyID), utils.Ptr(accessKeySecret))
 }
 
 // newCredential constructs a new credential based on the provided accessKeyID and accessKeySecret

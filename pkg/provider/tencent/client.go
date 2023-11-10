@@ -45,9 +45,7 @@ func (s *secretsManagerClient) GetSecretValue(ctx context.Context, request *ssm.
 		return nil, fmt.Errorf("error getting secret [%s] latest value: %w", utils.Deref(request.SecretName), err)
 	}
 
-	fmt.Printf("GetSecretValue response: %v\n", resp)
-
-	body, err := utils.ConvertToType[ssm.GetSecretValueResponseParams](resp)
+	body, err := utils.ConvertToType[ssm.GetSecretValueResponseParams](resp.Response)
 	if err != nil {
 		return nil, fmt.Errorf("error converting body: %w", err)
 	}
