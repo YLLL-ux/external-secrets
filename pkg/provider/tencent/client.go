@@ -14,6 +14,7 @@ import (
 type secretsManagerClient struct {
 	config *common.Credential
 	client *ssm.Client
+	region string
 }
 
 type SecretsManagerClient interface {
@@ -28,16 +29,13 @@ func newClient(credential common.CredentialIface, region string, clientProfile *
 		return nil, fmt.Errorf("failed to create client: %s", err)
 	}
 
-	sID := credential.GetSecretId()
-	sKey := credential.GetSecretKey()
-	cred := &common.Credential{
-		SecretId:  sID,
-		SecretKey: sKey,
-	}
-
 	return &secretsManagerClient{
-		config: cred,
+		config: &common.Credential{
+			SecretId:  credential.GetSecretId(),
+			SecretKey: credential.GetSecretKey(),
+		},
 		client: ssmClient,
+		region: region,
 	}, nil
 }
 
@@ -47,10 +45,14 @@ func (s *secretsManagerClient) GetSecretValue(ctx context.Context, request *ssm.
 		return nil, fmt.Errorf("error getting secret [%s] latest value: %w", utils.Deref(request.SecretName), err)
 	}
 
+	fmt.Printf("GetSecretValue response: %v\n", resp)
+
 	body, err := utils.ConvertToType[ssm.GetSecretValueResponseParams](resp)
 	if err != nil {
 		return nil, fmt.Errorf("error converting body: %w", err)
 	}
+
+	fmt.Printf("GetSecretValue body: %v\n", body)
 
 	return &body, nil
 }

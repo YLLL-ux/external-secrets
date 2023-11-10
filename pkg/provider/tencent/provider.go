@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/avast/retry-go/v4"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 	ssm "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ssm/v20190923"
@@ -169,22 +168,6 @@ func newCredential(accessKeyID, accessKeySecret *string) (common.CredentialIface
 }
 
 func (s *SecretsManager) Validate() (esv1beta1.ValidationResult, error) {
-	err := retry.Do(
-		func() error {
-			token := s.Config.GetToken()
-			if token == "" {
-				return fmt.Errorf(errMissingToken)
-			}
-
-			return nil
-		},
-		retry.Attempts(5),
-	)
-
-	if err != nil {
-		return esv1beta1.ValidationResultError, fmt.Errorf("failed to validate Tencent credentials: %w", err)
-	}
-
 	return esv1beta1.ValidationResultReady, nil
 }
 
