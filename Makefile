@@ -7,7 +7,7 @@ MAKEFLAGS     += --warn-undefined-variables
 
 ARCH ?= amd64 arm64
 BUILD_ARGS ?= CGO_ENABLED=0
-DOCKER_BUILD_ARGS ?= --platform linux/amd64
+DOCKER_BUILD_ARGS ?=
 DOCKERFILE ?= Dockerfile
 
 # default target is build

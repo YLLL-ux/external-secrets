@@ -23,7 +23,6 @@ var _ esv1beta1.SecretsClient = &SecretsManager{}
 
 type SecretsManager struct {
 	Client SSMInterface
-	Config *common.Credential
 }
 
 type SSMInterface interface {

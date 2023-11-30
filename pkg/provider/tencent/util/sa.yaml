@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: my-serviceaccount
-  namespace: my-namespace
-  annotations:
-    tke.cloud.tencent.com/role-arn: $my_role_arn
-    tke.cloud.tencent.com/audience: $my_audience
-    tke.cloud.tencent.com/providerID: $my_providerID

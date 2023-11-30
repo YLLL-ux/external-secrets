@@ -17,11 +17,7 @@ type secretsManagerClient struct {
 	region string
 }
 
-type SecretsManagerClient interface {
-	GetSecretValue(ctx context.Context, request *ssm.GetSecretValueRequest) (*ssm.GetSecretValueResponseParams, error)
-}
-
-var _ SecretsManagerClient = (*secretsManagerClient)(nil)
+var _ SSMInterface = (*secretsManagerClient)(nil)
 
 func newClient(credential common.CredentialIface, region string, clientProfile *profile.ClientProfile) (*secretsManagerClient, error) {
 	ssmClient, err := ssm.NewClient(credential, region, clientProfile)
