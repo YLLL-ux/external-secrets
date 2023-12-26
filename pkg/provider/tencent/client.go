@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/external-secrets/external-secrets/pkg/utils"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 	ssm "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ssm/v20190923"
-
-	"github.com/external-secrets/external-secrets/pkg/utils"
 )
 
 type secretsManagerClient struct {
@@ -36,7 +35,7 @@ func newClient(credential common.CredentialIface, region string, clientProfile *
 	}, nil
 }
 
-func (s *secretsManagerClient) GetSecretValue(ctx context.Context, request *ssm.GetSecretValueRequest) (*ssm.GetSecretValueResponseParams, error) {
+func (s *secretsManagerClient) GetSecretValue(_ context.Context, request *ssm.GetSecretValueRequest) (*ssm.GetSecretValueResponseParams, error) {
 	resp, err := s.client.GetSecretValue(request)
 	if err != nil {
 		return nil, fmt.Errorf("error getting secret [%s] latest value: %w", utils.Deref(request.SecretName), err)
