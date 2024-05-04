@@ -40,6 +40,12 @@ const (
 	msgStoreValidated = "store validated"
 )
 
+// ss与css使用相同的reconcile函数
+// 1.如果调谐完成则直接返回
+// 2.更新刷新时间
+// 3.验证ss（验证是否SecretsClient以及provider）
+// 4.设置status、记录event、设置Condition
+// 5.使用SecretsClient去patch status
 func reconcile(ctx context.Context, req ctrl.Request, ss esapi.GenericStore, cl client.Client, log logr.Logger,
 	controllerClass string, gaugeVecGetter metrics.GaugeVevGetter, recorder record.EventRecorder, requeueInterval time.Duration) (ctrl.Result, error) {
 	if !ShouldProcessStore(ss, controllerClass) {
@@ -47,6 +53,7 @@ func reconcile(ctx context.Context, req ctrl.Request, ss esapi.GenericStore, cl 
 		return ctrl.Result{}, nil
 	}
 
+	// 更新ss的刷新间隔
 	if ss.GetSpec().RefreshInterval != 0 {
 		requeueInterval = time.Second * time.Duration(ss.GetSpec().RefreshInterval)
 	}
@@ -54,7 +61,7 @@ func reconcile(ctx context.Context, req ctrl.Request, ss esapi.GenericStore, cl 
 	// patch status when done processing
 	p := client.MergeFrom(ss.Copy())
 	defer func() {
-		err := cl.Status().Patch(ctx, ss, p)
+		err := cl.Status().Patch(ctx, ss, p) // 更新ss的Status
 		if err != nil {
 			log.Error(err, errPatchStatus)
 		}
@@ -72,13 +79,16 @@ func reconcile(ctx context.Context, req ctrl.Request, ss esapi.GenericStore, cl 
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	// 设置ss的Status
 	capStatus := esapi.SecretStoreStatus{
 		Capabilities: storeProvider.Capabilities(),
 		Conditions:   ss.GetStatus().Conditions,
 	}
 	ss.SetStatus(capStatus)
 
+	// 记录ss的event，controller会发送apiserver
 	recorder.Event(ss, v1.EventTypeNormal, esapi.ReasonStoreValid, msgStoreValidated)
+	// 更新ss的Condition
 	cond := NewSecretStoreCondition(esapi.SecretStoreReady, v1.ConditionTrue, esapi.ReasonStoreValid, msgStoreValidated)
 	SetExternalSecretCondition(ss, *cond, gaugeVecGetter)
 
@@ -93,14 +103,19 @@ func validateStore(ctx context.Context, namespace, controllerClass string, store
 	client client.Client, gaugeVecGetter metrics.GaugeVevGetter, recorder record.EventRecorder) error {
 	mgr := NewManager(client, controllerClass, false)
 	defer mgr.Close(ctx)
-	cl, err := mgr.GetFromStore(ctx, store, namespace)
+	cl, err := mgr.GetFromStore(ctx, store, namespace) // 获取SecretsClient
 	if err != nil {
+		// 构建SecretStore的Condition
+		// 条件类型：SecretStoreReady	状态：ConditionFalse
+		// 原因：ReasonInvalidProviderConfig	错误变量：errUnableCreateClient
 		cond := NewSecretStoreCondition(esapi.SecretStoreReady, v1.ConditionFalse, esapi.ReasonInvalidProviderConfig, errUnableCreateClient)
+		// 为SecretStore设置Condition
 		SetExternalSecretCondition(store, *cond, gaugeVecGetter)
-		recorder.Event(store, v1.EventTypeWarning, esapi.ReasonInvalidProviderConfig, err.Error())
+		// 这是 controller-runtime 包中用于记录 Kubernetes 事件的函数。它允许控制器向 Kubernetes API 报告事件。
+		recorder.Event(store, v1.EventTypeWarning, esapi.ReasonInvalidProviderConfig, err.Error()) // recorder是secret-store
 		return fmt.Errorf(errStoreClient, err)
 	}
-	validationResult, err := cl.Validate()
+	validationResult, err := cl.Validate() // 调用provider的Validate实现方法验证provider是否ok
 	if err != nil && validationResult != esapi.ValidationResultUnknown {
 		cond := NewSecretStoreCondition(esapi.SecretStoreReady, v1.ConditionFalse, esapi.ReasonValidationFailed, errUnableValidateStore)
 		SetExternalSecretCondition(store, *cond, gaugeVecGetter)

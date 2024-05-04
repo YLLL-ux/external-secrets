@@ -150,7 +150,7 @@ func (r *Reconciler) applyTemplate(ctx context.Context, es *esv1beta1.ExternalSe
 	setMetadata(secret, es)
 
 	// no template: copy data and return
-	if es.Spec.Target.Template == nil {
+	if es.Spec.Target.Template == nil { // 没有指定生成secret的blueprint，则直接将SSM中的数据设置给secret.Data，然后返回
 		secret.Data = dataMap
 		return nil
 	}

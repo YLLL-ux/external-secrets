@@ -114,7 +114,7 @@ func contains(s []string, e string) bool {
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("CustomResourceDefinition", req.NamespacedName)
 	if contains(r.CrdResources, req.NamespacedName.Name) {
-		err := r.updateCRD(ctx, req)
+		err := r.updateCRD(ctx, req) // 更新CRD
 		if err != nil {
 			log.Error(err, "failed to inject conversion webhook")
 			r.rdyMu.Lock()

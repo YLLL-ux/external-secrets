@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zapcore" // 构建日志
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -89,6 +89,7 @@ const (
 	errCreateController = "unable to create controller"
 )
 
+// 在同一个包内，init 函数按照它们在代码中出现的顺序执行。
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = esv1beta1.AddToScheme(scheme)
@@ -159,7 +160,7 @@ var rootCmd = &cobra.Command{
 				namespace: {},
 			}
 		}
-		mgr, err := ctrl.NewManager(config, ctrlOpts)
+		mgr, err := ctrl.NewManager(config, ctrlOpts) // 实例化manager
 		if err != nil {
 			setupLog.Error(err, "unable to start manager")
 			os.Exit(1)
@@ -170,10 +171,10 @@ var rootCmd = &cobra.Command{
 			Client:          mgr.GetClient(),
 			Log:             ctrl.Log.WithName("controllers").WithName("SecretStore"),
 			Scheme:          mgr.GetScheme(),
-			ControllerClass: controllerClass,
-			RequeueInterval: storeRequeueInterval,
+			ControllerClass: controllerClass,      // 默认default
+			RequeueInterval: storeRequeueInterval, // 默认调谐间隔为5min
 		}).SetupWithManager(mgr, controller.Options{
-			MaxConcurrentReconciles: concurrent,
+			MaxConcurrentReconciles: concurrent, // 默认1
 		}); err != nil {
 			setupLog.Error(err, errCreateController, "controller", "SecretStore")
 			os.Exit(1)
@@ -243,7 +244,7 @@ var rootCmd = &cobra.Command{
 			f.Initialize()
 		}
 		setupLog.Info("starting manager")
-		if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil { // 启动manager
 			setupLog.Error(err, "problem running manager")
 			os.Exit(1)
 		}

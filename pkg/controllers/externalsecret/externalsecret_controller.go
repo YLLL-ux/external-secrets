@@ -41,6 +41,7 @@ import (
 	// Metrics.
 	"github.com/external-secrets/external-secrets/pkg/controllers/externalsecret/esmetrics"
 	ctrlmetrics "github.com/external-secrets/external-secrets/pkg/controllers/metrics"
+
 	// Loading registered generators.
 	_ "github.com/external-secrets/external-secrets/pkg/generator/register"
 	// Loading registered providers.
@@ -110,7 +111,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}()
 
 	var externalSecret esv1beta1.ExternalSecret
-	err := r.Get(ctx, req.NamespacedName, &externalSecret)
+	err := r.Get(ctx, req.NamespacedName, &externalSecret) // cache中获取es
 
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -145,13 +146,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// if extended metrics is enabled, refine the time series vector
 	resourceLabels = ctrlmetrics.RefineLabels(resourceLabels, externalSecret.Labels)
 
+	// 跳过css
 	if shouldSkipClusterSecretStore(r, externalSecret) {
 		log.Info("skipping cluster secret store as it is disabled")
 		return ctrl.Result{}, nil
 	}
 
 	// skip when pointing to an unmanaged store
-	skip, err := shouldSkipUnmanagedStore(ctx, req.Namespace, r, externalSecret)
+	// 这是 Kubernetes 控制器中的一个常见模式，用于实现控制器的多租户或插件化架构，其中不同的控制器可以管理不同的资源或资源的子集。
+	skip, err := shouldSkipUnmanagedStore(ctx, req.Namespace, r, externalSecret) // 跳过不是由当前控制器（r）管理的es
 	if skip {
 		log.Info("skipping unmanaged store as it points to a unmanaged controllerClass")
 		return ctrl.Result{}, nil
@@ -163,12 +166,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Target Secret Name should default to the ExternalSecret name if not explicitly specified
+	// 如果没有指定将要创建的Secret Name时，默认使用ExternalSecret Name
 	secretName := externalSecret.Spec.Target.Name
 	if secretName == "" {
 		secretName = externalSecret.ObjectMeta.Name
 	}
 
 	// fetch external secret, we need to ensure that it exists, and it's hashmap corresponds
+	// 获取缓存中的secret
 	var existingSecret v1.Secret
 	err = r.Get(ctx, types.NamespacedName{
 		Name:      secretName,
@@ -196,7 +201,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// patch status when done processing
 	p := client.MergeFrom(externalSecret.DeepCopy())
 	defer func() {
-		err = r.Status().Patch(ctx, &externalSecret, p)
+		err = r.Status().Patch(ctx, &externalSecret, p) // patch es的Status
 		if err != nil {
 			log.Error(err, errPatchStatus)
 		}
@@ -211,14 +216,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		Data:      make(map[string][]byte),
 	}
 
-	dataMap, err := r.getProviderSecretData(ctx, &externalSecret)
+	dataMap, err := r.getProviderSecretData(ctx, &externalSecret) // 通过es获取SSM中存储的数据
 	if err != nil {
 		r.markAsFailed(log, errGetSecretData, err, &externalSecret, syncCallsError.With(resourceLabels))
 		return ctrl.Result{}, err
 	}
 
 	// if no data was found we can delete the secret if needed.
-	if len(dataMap) == 0 {
+	if len(dataMap) == 0 { // 如果SSM中没有找到数据，则删除secret对象
 		switch externalSecret.Spec.Target.DeletionPolicy {
 		// delete secret and return early.
 		case esv1beta1.DeletionPolicyDelete:
@@ -230,6 +235,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 				return ctrl.Result{}, err
 			}
 
+			// CreationPolicy==Owner时，删除secret
 			err = r.Delete(ctx, secret)
 			if err != nil && !apierrors.IsNotFound(err) {
 				r.markAsFailed(log, errDeleteSecret, err, &externalSecret, syncCallsError.With(resourceLabels))
@@ -250,6 +256,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	mutationFunc := func() error {
 		if externalSecret.Spec.Target.CreationPolicy == esv1beta1.CreatePolicyOwner {
+			// 将secret设置externalSecret的资子资源，如果externalSecret被删除，与其关联的secret也会被删除
 			err = controllerutil.SetControllerReference(&externalSecret, &secret.ObjectMeta, r.Scheme)
 			if err != nil {
 				return fmt.Errorf(errSetCtrlReference, err)
@@ -259,28 +266,28 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			secret.Data = make(map[string][]byte)
 		}
 		// diff existing keys
-		keys, err := getManagedKeys(&existingSecret, externalSecret.Name)
+		keys, err := getManagedKeys(&existingSecret, externalSecret.Name) // 找出当前secret中由es管理的字段
 		if err != nil {
 			return err
 		}
 		// Sanitize data map for any updates on the ES
 		for _, key := range keys {
-			if dataMap[key] == nil {
+			if dataMap[key] == nil { // SSM中不存的数据，构建的secret对象中也需要删除
 				secret.Data[key] = nil
 				// Sanitizing any templated / updated keys
 				delete(secret.Data, key)
 			}
 		}
-		err = r.applyTemplate(ctx, &externalSecret, secret, dataMap)
+		err = r.applyTemplate(ctx, &externalSecret, secret, dataMap) // apply构建好的secret对象merge template
 		if err != nil {
 			return fmt.Errorf(errApplyTemplate, err)
 		}
-		if externalSecret.Spec.Target.CreationPolicy == esv1beta1.CreatePolicyOwner {
+		if externalSecret.Spec.Target.CreationPolicy == esv1beta1.CreatePolicyOwner { // 设置secret的label
 			lblValue := utils.ObjectHash(fmt.Sprintf("%v/%v", externalSecret.Namespace, externalSecret.Name))
 			secret.Labels[esv1beta1.LabelOwner] = lblValue
 		}
 
-		secret.Annotations[esv1beta1.AnnotationDataHash] = r.computeDataHashAnnotation(&existingSecret, secret)
+		secret.Annotations[esv1beta1.AnnotationDataHash] = r.computeDataHashAnnotation(&existingSecret, secret) // 设置secret的Annotations
 
 		return nil
 	}
@@ -345,6 +352,11 @@ func (r *Reconciler) markAsFailed(log logr.Logger, msg string, err error, extern
 	counter.Inc()
 }
 
+// 在 Kubernetes 集群中删除那些由 ExternalSecret 控制器创建，但不再被 ExternalSecret 的当前配置引用的 Secret 对象。
+// 例如：
+// ExternalSecret最初创建了一个名为 secret1 的 Secret。
+// 后来，ExternalSecret的配置被更新，以创建一个名为 secret2 的新 Secret。
+// deleteOrphanedSecrets函数将删除不再被 ExternalSecret 引用的 secret1。
 func deleteOrphanedSecrets(ctx context.Context, cl client.Client, externalSecret *esv1beta1.ExternalSecret) error {
 	secretList := v1.SecretList{}
 	lblValue := utils.ObjectHash(fmt.Sprintf("%v/%v", externalSecret.Namespace, externalSecret.Name))
@@ -447,8 +459,9 @@ func patchSecret(ctx context.Context, c client.Client, scheme *runtime.Scheme, s
 	return nil
 }
 
+// 找出secret中哪些字段是由es所管理
 func getManagedKeys(secret *v1.Secret, fieldOwner string) ([]string, error) {
-	fqdn := fmt.Sprintf(fieldOwnerTemplate, fieldOwner)
+	fqdn := fmt.Sprintf(fieldOwnerTemplate, fieldOwner) // externalsecrets.external-secrets.io/my-externalsecret
 	var keys []string
 	for _, v := range secret.ObjectMeta.ManagedFields {
 		if v.Manager != fqdn {
@@ -500,7 +513,7 @@ func shouldSkipClusterSecretStore(r *Reconciler, es esv1beta1.ExternalSecret) bo
 // fetches the store and evaluates the controllerClass property.
 // Returns true if any storeRef points to store with a non-matching controllerClass.
 func shouldSkipUnmanagedStore(ctx context.Context, namespace string, r *Reconciler, es esv1beta1.ExternalSecret) (bool, error) {
-	var storeList []esv1beta1.SecretStoreRef
+	var storeList []esv1beta1.SecretStoreRef // es需要指定使用哪个ss
 
 	if es.Spec.SecretStoreRef.Name != "" {
 		storeList = append(storeList, es.Spec.SecretStoreRef)
@@ -561,7 +574,7 @@ func shouldSkipUnmanagedStore(ctx context.Context, namespace string, r *Reconcil
 
 func shouldRefresh(es esv1beta1.ExternalSecret) bool {
 	// refresh if resource version changed
-	if es.Status.SyncedResourceVersion != getResourceVersion(es) {
+	if es.Status.SyncedResourceVersion != getResourceVersion(es) { // 正在同步中
 		return true
 	}
 
@@ -624,6 +637,6 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, opts controller.Options)
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(opts).
 		For(&esv1beta1.ExternalSecret{}).
-		Owns(&v1.Secret{}, builder.OnlyMetadata).
+		Owns(&v1.Secret{}, builder.OnlyMetadata). // 控制器只关心Secret对象的元数据（如标签和注解），而不是对象的整个规格
 		Complete(r)
 }

@@ -150,6 +150,7 @@ func (r *Reconciler) ReadyCheck(_ *http.Request) error {
 
 // reads the ca cert and updates the webhook config.
 func (r *Reconciler) updateConfig(ctx context.Context, cfg *admissionregistration.ValidatingWebhookConfiguration) error {
+	// cache中获取secret
 	secret := v1.Secret{}
 	secretName := types.NamespacedName{
 		Name:      r.SecretName,
@@ -160,16 +161,17 @@ func (r *Reconciler) updateConfig(ctx context.Context, cfg *admissionregistratio
 		return err
 	}
 
-	crt, ok := secret.Data[caCertName]
+	crt, ok := secret.Data[caCertName] // 读取CA证书
 	if !ok {
 		return fmt.Errorf(errCACertNotReady)
 	}
 	if err := r.inject(cfg, r.SvcName, r.SvcNamespace, crt); err != nil {
 		return err
 	}
-	return r.Update(ctx, cfg)
+	return r.Update(ctx, cfg) // 更新ValidatingWebhookConfiguration对象
 }
 
+// 自动化管理ValidatingWebhookConfiguration对象中的Webhook配置，确保它们使用最新的CA证书和服务信息。
 func (r *Reconciler) inject(cfg *admissionregistration.ValidatingWebhookConfiguration, svcName, svcNamespace string, certData []byte) error {
 	r.Log.Info("injecting ca certificate and service names", "cacrt", base64.StdEncoding.EncodeToString(certData), "name", cfg.Name)
 	for idx, w := range cfg.Webhooks {

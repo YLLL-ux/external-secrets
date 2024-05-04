@@ -87,6 +87,7 @@ var certcontrollerCmd = &cobra.Command{
 			setupLog.Error(err, "unable to start manager")
 			os.Exit(1)
 		}
+		// 构建crd的Reconcile
 		crdctrl := crds.New(mgr.GetClient(), mgr.GetScheme(),
 			ctrl.Log.WithName("controllers").WithName("webhook-certs-updater"),
 			crdRequeueInterval, serviceName, serviceNamespace, secretName, secretNamespace, crdNames)
@@ -97,6 +98,7 @@ var certcontrollerCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// 构建webhook的Reconcile
 		whc := webhookconfig.New(mgr.GetClient(), mgr.GetScheme(),
 			ctrl.Log.WithName("controllers").WithName("webhook-certs-updater"),
 			serviceName, serviceNamespace,

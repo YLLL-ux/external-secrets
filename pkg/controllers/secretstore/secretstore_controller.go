@@ -29,6 +29,7 @@ import (
 	esapi "github.com/external-secrets/external-secrets/apis/externalsecrets/v1beta1"
 	ctrlmetrics "github.com/external-secrets/external-secrets/pkg/controllers/metrics"
 	"github.com/external-secrets/external-secrets/pkg/controllers/secretstore/ssmetrics"
+
 	// Loading registered providers.
 	_ "github.com/external-secrets/external-secrets/pkg/provider/register"
 )
@@ -43,6 +44,9 @@ type StoreReconciler struct {
 	ControllerClass string
 }
 
+// 1.设置metrics
+// 2.从缓存中读取ss
+// 3.调用reconcile函数
 func (r *StoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("secretstore", req.NamespacedName)
 
@@ -53,7 +57,7 @@ func (r *StoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	defer func() { secretStoreReconcileDuration.With(resourceLabels).Set(float64(time.Since(start))) }()
 
 	var ss esapi.SecretStore
-	err := r.Get(ctx, req.NamespacedName, &ss)
+	err := r.Get(ctx, req.NamespacedName, &ss) // 从缓存读取ss
 	if apierrors.IsNotFound(err) {
 		ssmetrics.RemoveMetrics(req.Namespace, req.Name)
 		return ctrl.Result{}, nil
@@ -67,8 +71,9 @@ func (r *StoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 // SetupWithManager returns a new controller builder that will be started by the provided Manager.
 func (r *StoreReconciler) SetupWithManager(mgr ctrl.Manager, opts controller.Options) error {
-	r.recorder = mgr.GetEventRecorderFor("secret-store")
+	r.recorder = mgr.GetEventRecorderFor("secret-store") // 确保SecretStore资源的事件是与secret-store控制器相关
 
+	// NewControllerManagedBy注册StoreReconciler
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(opts).
 		For(&esapi.SecretStore{}).

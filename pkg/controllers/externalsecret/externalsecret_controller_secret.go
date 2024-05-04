@@ -30,6 +30,7 @@ import (
 
 	esv1beta1 "github.com/external-secrets/external-secrets/apis/externalsecrets/v1beta1"
 	genv1alpha1 "github.com/external-secrets/external-secrets/apis/generators/v1alpha1"
+
 	// Loading registered providers.
 	"github.com/external-secrets/external-secrets/pkg/controllers/secretstore"
 	// Loading registered generators.
@@ -52,11 +53,11 @@ func (r *Reconciler) getProviderSecretData(ctx context.Context, externalSecret *
 		var secretMap map[string][]byte
 		var err error
 
-		if remoteRef.Find != nil {
+		if remoteRef.Find != nil { // find secret
 			secretMap, err = r.handleFindAllSecrets(ctx, externalSecret, remoteRef, mgr, i)
-		} else if remoteRef.Extract != nil {
+		} else if remoteRef.Extract != nil { // extract secret
 			secretMap, err = r.handleExtractSecrets(ctx, externalSecret, remoteRef, mgr, i)
-		} else if remoteRef.SourceRef != nil && remoteRef.SourceRef.GeneratorRef != nil {
+		} else if remoteRef.SourceRef != nil && remoteRef.SourceRef.GeneratorRef != nil { // generate secret
 			secretMap, err = r.handleGenerateSecrets(ctx, externalSecret.Namespace, remoteRef, i)
 		}
 		if errors.Is(err, esv1beta1.NoSecretErr) && externalSecret.Spec.Target.DeletionPolicy != esv1beta1.DeletionPolicyRetain {
@@ -89,11 +90,13 @@ func (r *Reconciler) getProviderSecretData(ctx context.Context, externalSecret *
 }
 
 func (r *Reconciler) handleSecretData(ctx context.Context, i int, externalSecret esv1beta1.ExternalSecret, secretRef esv1beta1.ExternalSecretData, providerData map[string][]byte, cmgr *secretstore.Manager) error {
+	// 构建ss的client
 	client, err := cmgr.Get(ctx, externalSecret.Spec.SecretStoreRef, externalSecret.Namespace, toStoreGenSourceRef(secretRef.SourceRef))
 	if err != nil {
 		return err
 	}
-	secretData, err := client.GetSecret(ctx, secretRef.RemoteRef)
+	// 获取SSM中的secretData
+	secretData, err := client.GetSecret(ctx, secretRef.RemoteRef) // GetSecret()各个provider需要实现的方法
 	if err != nil {
 		return err
 	}
@@ -101,6 +104,9 @@ func (r *Reconciler) handleSecretData(ctx context.Context, i int, externalSecret
 	if err != nil {
 		return fmt.Errorf(errDecode, "spec.data", i, err)
 	}
+	// 举例--SSM中存放的secret如下：
+	// SecretKey: hello-test
+	// SecretData: {"name":"jack","password":"123"}
 	providerData[secretRef.SecretKey] = secretData
 	return nil
 }
