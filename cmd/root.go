@@ -168,13 +168,13 @@ var rootCmd = &cobra.Command{
 
 		ssmetrics.SetUpMetrics()
 		if err = (&secretstore.StoreReconciler{
-			Client:          mgr.GetClient(),
+			Client:          mgr.GetClient(), // 连接集群的客户端
 			Log:             ctrl.Log.WithName("controllers").WithName("SecretStore"),
 			Scheme:          mgr.GetScheme(),
 			ControllerClass: controllerClass,      // 默认default
 			RequeueInterval: storeRequeueInterval, // 默认调谐间隔为5min
 		}).SetupWithManager(mgr, controller.Options{
-			MaxConcurrentReconciles: concurrent, // 默认1
+			MaxConcurrentReconciles: concurrent, // 最大并发数，默认1
 		}); err != nil {
 			setupLog.Error(err, errCreateController, "controller", "SecretStore")
 			os.Exit(1)
