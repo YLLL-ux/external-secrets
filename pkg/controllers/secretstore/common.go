@@ -117,7 +117,7 @@ func validateStore(ctx context.Context, namespace, controllerClass string, store
 	client client.Client, gaugeVecGetter metrics.GaugeVevGetter, recorder record.EventRecorder) error {
 	mgr := NewManager(client, controllerClass, false)
 	defer mgr.Close(ctx)
-	cl, err := mgr.GetFromStore(ctx, store, namespace) // 获取SecretsClient
+	cl, err := mgr.GetFromStore(ctx, store, namespace) // 获取provider的SecretsClient
 	if err != nil {
 		// 构建SecretStore的Condition
 		// 条件类型：SecretStoreReady	状态：ConditionFalse
@@ -126,6 +126,11 @@ func validateStore(ctx context.Context, namespace, controllerClass string, store
 		// 为SecretStore设置Condition
 		SetExternalSecretCondition(store, *cond, gaugeVecGetter)
 		// 这是 controller-runtime 包中用于记录 Kubernetes 事件的函数。它允许控制器向 Kubernetes API 报告事件。
+		// event需要设置的内容：
+		// 1.reconcile object
+		// 2.event type
+		// 3.reason
+		// 4.message(error msg / success msg)
 		recorder.Event(store, v1.EventTypeWarning, esapi.ReasonInvalidProviderConfig, err.Error()) // recorder是secret-store
 		return fmt.Errorf(errStoreClient, err)
 	}

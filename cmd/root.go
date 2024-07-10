@@ -168,8 +168,8 @@ var rootCmd = &cobra.Command{
 
 		ssmetrics.SetUpMetrics()
 		if err = (&secretstore.StoreReconciler{
-			Client:          mgr.GetClient(), // 连接集群的客户端
-			Log:             ctrl.Log.WithName("controllers").WithName("SecretStore"),
+			Client:          mgr.GetClient(),                                          // 连接集群的客户端
+			Log:             ctrl.Log.WithName("controllers").WithName("SecretStore"), // ss/css controller用来连接ssm
 			Scheme:          mgr.GetScheme(),
 			ControllerClass: controllerClass,      // 默认default
 			RequeueInterval: storeRequeueInterval, // 默认调谐间隔为5min
@@ -194,7 +194,7 @@ var rootCmd = &cobra.Command{
 		}
 		if err = (&externalsecret.Reconciler{
 			Client:                    mgr.GetClient(),
-			Log:                       ctrl.Log.WithName("controllers").WithName("ExternalSecret"),
+			Log:                       ctrl.Log.WithName("controllers").WithName("ExternalSecret"), // es/ces controller用来创建secret
 			Scheme:                    mgr.GetScheme(),
 			RestConfig:                mgr.GetConfig(),
 			ControllerClass:           controllerClass,

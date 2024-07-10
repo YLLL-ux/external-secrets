@@ -20,11 +20,11 @@ import (
 	"sync"
 )
 
-var builder map[string]Provider
+var builder map[string]Provider // 定义全局变量
 var buildlock sync.RWMutex
 
 func init() {
-	builder = make(map[string]Provider)
+	builder = make(map[string]Provider) // 初始化全局变量
 }
 
 // Register a store backend type. Register panics if a
@@ -71,24 +71,24 @@ func GetProvider(s GenericStore) (Provider, error) {
 	if s == nil {
 		return nil, nil
 	}
-	spec := s.GetSpec()
+	spec := s.GetSpec() // 获取ss的spec
 	if spec == nil {
 		return nil, fmt.Errorf("no spec found in %#v", s)
 	}
-	storeName, err := getProviderName(spec.Provider)
+	storeName, err := getProviderName(spec.Provider) // 获取spec.Provider字段
 	if err != nil {
 		return nil, fmt.Errorf("store error for %s: %w", s.GetName(), err)
 	}
 
 	buildlock.RLock()
-	f, ok := builder[storeName]
+	f, ok := builder[storeName] //判断provider是都已经注册
 	buildlock.RUnlock()
 
 	if !ok {
 		return nil, fmt.Errorf("failed to find registered store backend for type: %s, name: %s", storeName, s.GetName())
 	}
 
-	return f, nil
+	return f, nil // 返回Provider
 }
 
 // getProviderName returns the name of the configured provider

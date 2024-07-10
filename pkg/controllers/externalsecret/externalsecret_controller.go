@@ -97,24 +97,28 @@ type Reconciler struct {
 // for watched objects (ExternalSecret, ClusterSecretStore and SecretStore),
 // and updates/creates a Kubernetes secret based on them.
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("ExternalSecret", req.NamespacedName)
+	// 1.初始化日志和指标
+	log := r.Log.WithValues("ExternalSecret", req.NamespacedName) // 初始化日志记录器log
 
-	resourceLabels := ctrlmetrics.RefineNonConditionMetricLabels(map[string]string{"name": req.Name, "namespace": req.Namespace})
-	start := time.Now()
+	resourceLabels := ctrlmetrics.RefineNonConditionMetricLabels(map[string]string{"name": req.Name, "namespace": req.Namespace}) // 初始化resourceLabels，用于记录指标的标签
+	start := time.Now()                                                                                                           // 记录开始时间，用于处理时间
 
-	syncCallsError := esmetrics.GetCounterVec(esmetrics.SyncCallsErrorKey)
+	syncCallsError := esmetrics.GetCounterVec(esmetrics.SyncCallsErrorKey) // 初始化syncCallsError，用于记录同步错误的计数器
 
+	// 2.延迟函数，用于记录指标
 	// use closures to dynamically update resourceLabels
 	defer func() {
-		esmetrics.GetGaugeVec(esmetrics.ExternalSecretReconcileDurationKey).With(resourceLabels).Set(float64(time.Since(start)))
-		esmetrics.GetCounterVec(esmetrics.SyncCallsKey).With(resourceLabels).Inc()
+		esmetrics.GetGaugeVec(esmetrics.ExternalSecretReconcileDurationKey).With(resourceLabels).Set(float64(time.Since(start))) // 记录处理时间
+		esmetrics.GetCounterVec(esmetrics.SyncCallsKey).With(resourceLabels).Inc()                                               // 记录同步次数
 	}()
 
+	// 3.获取externalSecret对象
 	var externalSecret esv1beta1.ExternalSecret
-	err := r.Get(ctx, req.NamespacedName, &externalSecret) // cache中获取es
+	err := r.Get(ctx, req.NamespacedName, &externalSecret) // 从cache中获取es
 
+	// 4.处理es不存在的情况
 	if err != nil {
-		if apierrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) { // 如果err是NotFound，则记录condition并返回
 			conditionSynced := NewExternalSecretCondition(esv1beta1.ExternalSecretDeleted, v1.ConditionFalse, esv1beta1.ConditionReasonSecretDeleted, "Secret was deleted")
 			SetExternalSecretCondition(&esv1beta1.ExternalSecret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -126,64 +130,71 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return ctrl.Result{}, nil
 		}
 
+		// 如果存在其他错误，则记录错误并增加同步错误计数器
 		log.Error(err, errGetES)
 		syncCallsError.With(resourceLabels).Inc()
 
 		return ctrl.Result{}, err
 	}
 
+	// 5.计算上次刷新时间
 	timeSinceLastRefresh := 0 * time.Second
 	if !externalSecret.Status.RefreshTime.IsZero() {
-		timeSinceLastRefresh = time.Since(externalSecret.Status.RefreshTime.Time)
+		timeSinceLastRefresh = time.Since(externalSecret.Status.RefreshTime.Time) // 计算自上次刷新以来的时间
 	}
 
+	// 6.跳过删除中的es对象
 	// skip reconciliation if deletion timestamp is set on external secret
-	if externalSecret.DeletionTimestamp != nil {
+	if externalSecret.DeletionTimestamp != nil { // 如果es正在删除，则跳过该es对象
 		log.Info("skipping as it is in deletion")
 		return ctrl.Result{}, nil
 	}
 
+	// 7.细化指标标签
 	// if extended metrics is enabled, refine the time series vector
-	resourceLabels = ctrlmetrics.RefineLabels(resourceLabels, externalSecret.Labels)
+	resourceLabels = ctrlmetrics.RefineLabels(resourceLabels, externalSecret.Labels) // 根据es的标签细化指标标签
 
-	// 跳过css
+	// 8.如果css被禁用，则跳过css
 	if shouldSkipClusterSecretStore(r, externalSecret) {
 		log.Info("skipping cluster secret store as it is disabled")
 		return ctrl.Result{}, nil
 	}
 
+	// 9.跳过未管理的es
 	// skip when pointing to an unmanaged store
 	// 这是 Kubernetes 控制器中的一个常见模式，用于实现控制器的多租户或插件化架构，其中不同的控制器可以管理不同的资源或资源的子集。
-	skip, err := shouldSkipUnmanagedStore(ctx, req.Namespace, r, externalSecret) // 跳过不是由当前控制器（r）管理的es
+	skip, err := shouldSkipUnmanagedStore(ctx, req.Namespace, r, externalSecret) // 如果es未被当前Reconcile管理，则跳过
 	if skip {
 		log.Info("skipping unmanaged store as it points to a unmanaged controllerClass")
 		return ctrl.Result{}, nil
 	}
 
+	// 10.设置刷新间隔
 	refreshInt := r.RequeueInterval
-	if externalSecret.Spec.RefreshInterval != nil {
+	if externalSecret.Spec.RefreshInterval != nil { // 如果es指定了刷新间隔，则使用该值
 		refreshInt = externalSecret.Spec.RefreshInterval.Duration
 	}
 
+	// 11.设置目标secret_name
 	// Target Secret Name should default to the ExternalSecret name if not explicitly specified
-	// 如果没有指定将要创建的Secret Name时，默认使用ExternalSecret Name
 	secretName := externalSecret.Spec.Target.Name
-	if secretName == "" {
+	if secretName == "" { // 如果没有指定将要创建的Secret Name时，默认使用ExternalSecret Name
 		secretName = externalSecret.ObjectMeta.Name
 	}
 
+	// 12.获取缓存中的secret
 	// fetch external secret, we need to ensure that it exists, and it's hashmap corresponds
-	// 获取缓存中的secret
 	var existingSecret v1.Secret
-	err = r.Get(ctx, types.NamespacedName{
+	err = r.Get(ctx, types.NamespacedName{ // 获取es已经生成的secret
 		Name:      secretName,
 		Namespace: externalSecret.Namespace,
 	}, &existingSecret)
-	if err != nil && !apierrors.IsNotFound(err) {
+	if err != nil && !apierrors.IsNotFound(err) { // 如果没有找到，则返回
 		log.Error(err, errGetExistingSecret)
 		return ctrl.Result{}, err
 	}
 
+	// 13.判断是否需要刷新或者停止Reconcile
 	// refresh should be skipped if
 	// 1. resource generation hasn't changed
 	// 2. refresh interval is 0
@@ -198,15 +209,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
+	// 14.延迟函数用于更新状态
 	// patch status when done processing
 	p := client.MergeFrom(externalSecret.DeepCopy())
-	defer func() {
+	defer func() { // 使用延迟函数更新es的状态
 		err = r.Status().Patch(ctx, &externalSecret, p) // patch es的Status
 		if err != nil {
 			log.Error(err, errPatchStatus)
 		}
 	}()
 
+	// 15.初始化es将要创建的secret对象
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
@@ -216,14 +229,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		Data:      make(map[string][]byte),
 	}
 
+	// 16.获取SSM（密钥管理系统）中的密钥凭据
 	dataMap, err := r.getProviderSecretData(ctx, &externalSecret) // 通过es获取SSM中存储的数据
 	if err != nil {
 		r.markAsFailed(log, errGetSecretData, err, &externalSecret, syncCallsError.With(resourceLabels))
 		return ctrl.Result{}, err
 	}
 
+	// 17.处理获取空数据的情况
 	// if no data was found we can delete the secret if needed.
-	if len(dataMap) == 0 { // 如果SSM中没有找到数据，则删除secret对象
+	if len(dataMap) == 0 { // 如果SSM中没有找到数据，则根据删除策略处理在第15步中创建的secret对象
 		switch externalSecret.Spec.Target.DeletionPolicy {
 		// delete secret and return early.
 		case esv1beta1.DeletionPolicyDelete:
@@ -254,8 +269,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}
 
+	// 18.定义突变func，用于更新secret对象
 	mutationFunc := func() error {
-		if externalSecret.Spec.Target.CreationPolicy == esv1beta1.CreatePolicyOwner {
+		if externalSecret.Spec.Target.CreationPolicy == esv1beta1.CreatePolicyOwner { // 将externalSecret设置为secret的控制器
 			// 将secret设置externalSecret的资子资源，如果externalSecret被删除，与其关联的secret也会被删除
 			err = controllerutil.SetControllerReference(&externalSecret, &secret.ObjectMeta, r.Scheme)
 			if err != nil {
@@ -272,7 +288,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 		// Sanitize data map for any updates on the ES
 		for _, key := range keys {
-			if dataMap[key] == nil { // SSM中不存的数据，构建的secret对象中也需要删除
+			if dataMap[key] == nil { // 如果key在SSM中不存了，则secret中的key也需要被删除
 				secret.Data[key] = nil
 				// Sanitizing any templated / updated keys
 				delete(secret.Data, key)
@@ -292,16 +308,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return nil
 	}
 
+	// 19.根据es中定义的创建策略，处理secret对象
 	switch externalSecret.Spec.Target.CreationPolicy { //nolint:exhaustive
-	case esv1beta1.CreatePolicyMerge:
+	case esv1beta1.CreatePolicyMerge: // 合并
 		err = patchSecret(ctx, r.Client, r.Scheme, secret, mutationFunc, externalSecret.Name)
 		if err == nil {
 			externalSecret.Status.Binding = v1.LocalObjectReference{Name: secret.Name}
 		}
-	case esv1beta1.CreatePolicyNone:
+	case esv1beta1.CreatePolicyNone: // 跳过
 		log.V(1).Info("secret creation skipped due to creationPolicy=None")
 		err = nil
-	default:
+	default: // 创建或更新
 		var created bool
 		created, err = createOrUpdate(ctx, r.Client, secret, mutationFunc, externalSecret.Name)
 		if err == nil {
@@ -318,6 +335,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}
 
+	// 20.处理错误并标记处理完成
 	if err != nil {
 		r.markAsFailed(log, errUpdateSecret, err, &externalSecret, syncCallsError.With(resourceLabels))
 		return ctrl.Result{}, err
@@ -589,7 +607,7 @@ func shouldRefresh(es esv1beta1.ExternalSecret) bool {
 }
 
 func shouldReconcile(es esv1beta1.ExternalSecret) bool {
-	if es.Spec.Target.Immutable && hasSyncedCondition(es) {
+	if es.Spec.Target.Immutable && hasSyncedCondition(es) { // es.Spec.Target.Immutable以及es已经SecretSynced时，停止Reconcile
 		return false
 	}
 	return true
@@ -632,11 +650,11 @@ func (r *Reconciler) computeDataHashAnnotation(existing, secret *v1.Secret) stri
 
 // SetupWithManager returns a new controller builder that will be started by the provided Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, opts controller.Options) error {
-	r.recorder = mgr.GetEventRecorderFor("external-secrets")
+	r.recorder = mgr.GetEventRecorderFor("external-secrets") // 设置时间记录器，确保es资源的事件是与external-secrets控制相关的
 
-	return ctrl.NewControllerManagedBy(mgr).
-		WithOptions(opts).
-		For(&esv1beta1.ExternalSecret{}).
-		Owns(&v1.Secret{}, builder.OnlyMetadata). // 控制器只关心Secret对象的元数据（如标签和注解），而不是对象的整个规格
-		Complete(r)
+	return ctrl.NewControllerManagedBy(mgr). // 构建一个新的控制，并将其交给mgr
+							WithOptions(opts).                        // 设置opts选项
+							For(&esv1beta1.ExternalSecret{}).         // 指定控制监视的资源类型为ExternalSecret
+							Owns(&v1.Secret{}, builder.OnlyMetadata). // 控制器只关心Secret对象的元数据（如标签和注解），而不是对象的整个规格
+							Complete(r)                               // 完成控制器的设置
 }

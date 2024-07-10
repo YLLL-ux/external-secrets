@@ -41,14 +41,17 @@ import (
 
 // getProviderSecretData returns the provider's secret data with the provided ExternalSecret.
 func (r *Reconciler) getProviderSecretData(ctx context.Context, externalSecret *esv1beta1.ExternalSecret) (map[string][]byte, error) {
+	// 1.创建客户端管理器
 	// We MUST NOT create multiple instances of a provider client (mostly due to limitations with GCP)
 	// Clientmanager keeps track of the client instances
 	// that are created during the fetching process and closes clients
 	// if needed.
-	mgr := secretstore.NewManager(r.Client, r.ControllerClass, r.EnableFloodGate)
-	defer mgr.Close(ctx)
+	mgr := secretstore.NewManager(r.Client, r.ControllerClass, r.EnableFloodGate) // 构建client mgr对象
+	defer mgr.Close(ctx)                                                          // 函数结束时关闭client
 
+	// 2.初始化将要获取的凭据信息
 	providerData := make(map[string][]byte)
+	// 3.处理DataFrom部分
 	for i, remoteRef := range externalSecret.Spec.DataFrom {
 		var secretMap map[string][]byte
 		var err error
@@ -72,12 +75,13 @@ func (r *Reconciler) getProviderSecretData(ctx context.Context, externalSecret *
 		if err != nil {
 			return nil, err
 		}
-		providerData = utils.MergeByteMap(providerData, secretMap)
+		providerData = utils.MergeByteMap(providerData, secretMap) // 将获取到的secretMap合并到providerData中
 	}
 
+	// 4.处理Data
 	for i, secretRef := range externalSecret.Spec.Data {
-		err := r.handleSecretData(ctx, i, *externalSecret, secretRef, providerData, mgr)
-		if errors.Is(err, esv1beta1.NoSecretErr) && externalSecret.Spec.Target.DeletionPolicy != esv1beta1.DeletionPolicyRetain {
+		err := r.handleSecretData(ctx, i, *externalSecret, secretRef, providerData, mgr)                                          // 处理每个secretRef
+		if errors.Is(err, esv1beta1.NoSecretErr) && externalSecret.Spec.Target.DeletionPolicy != esv1beta1.DeletionPolicyRetain { // 如果没有找到，则记录event
 			r.recorder.Event(externalSecret, v1.EventTypeNormal, esv1beta1.ReasonDeleted, fmt.Sprintf("secret does not exist at provider using .data[%d] key=%s", i, secretRef.RemoteRef.Key))
 			continue
 		}
@@ -90,7 +94,7 @@ func (r *Reconciler) getProviderSecretData(ctx context.Context, externalSecret *
 }
 
 func (r *Reconciler) handleSecretData(ctx context.Context, i int, externalSecret esv1beta1.ExternalSecret, secretRef esv1beta1.ExternalSecretData, providerData map[string][]byte, cmgr *secretstore.Manager) error {
-	// 构建ss的client
+	// 获取可以连接到SSM的client
 	client, err := cmgr.Get(ctx, externalSecret.Spec.SecretStoreRef, externalSecret.Namespace, toStoreGenSourceRef(secretRef.SourceRef))
 	if err != nil {
 		return err

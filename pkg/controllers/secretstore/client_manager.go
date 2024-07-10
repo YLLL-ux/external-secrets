@@ -74,11 +74,11 @@ func NewManager(ctrlClient client.Client, controllerClass string, enableFloodgat
 }
 
 func (m *Manager) GetFromStore(ctx context.Context, store esv1beta1.GenericStore, namespace string) (esv1beta1.SecretsClient, error) {
-	storeProvider, err := esv1beta1.GetProvider(store)
+	storeProvider, err := esv1beta1.GetProvider(store) //获取ss.yaml中的provider_name
 	if err != nil {
 		return nil, err
 	}
-	secretClient := m.getStoredClient(ctx, storeProvider, store)
+	secretClient := m.getStoredClient(ctx, storeProvider, store) //获取连接ssm的client
 	if secretClient != nil {
 		return secretClient, nil
 	}
@@ -129,7 +129,7 @@ func (m *Manager) Get(ctx context.Context, storeRef esv1beta1.SecretStoreRef, na
 			return nil, err
 		}
 	}
-	return m.GetFromStore(ctx, store, namespace)
+	return m.GetFromStore(ctx, store, namespace) // 获取可以连接到SSM的client
 }
 
 // returns a previously stored client from the cache if store and store-version match
