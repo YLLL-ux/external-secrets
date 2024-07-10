@@ -46,11 +46,19 @@ func GetSecretStoreCondition(status esapi.SecretStoreStatus, condType esapi.Secr
 
 // SetExternalSecretCondition updates the external secret to include the provided
 // condition.
+// 1.更新Condition，并记录相关指标
+// 2.从gs中获取当前status
+// 3.检查当前condition
+// 4.处理condition变化
+// 5.更新condition列表
+// 6.设置更新后的condition
 func SetExternalSecretCondition(gs esapi.GenericStore, condition esapi.SecretStoreStatusCondition, gaugeVecGetter metrics.GaugeVevGetter) {
 	metrics.UpdateStatusCondition(gs, condition, gaugeVecGetter)
 
 	status := gs.GetStatus()
+	// 调用GetSecretStoreCondition获取当前状态中与condition.Type匹配的条件
 	currentCond := GetSecretStoreCondition(status, condition.Type)
+	// 如果当前条件存在并且与提供的条件完全相同，则直接返回，不进行任何更新
 	if currentCond != nil && currentCond.Status == condition.Status &&
 		currentCond.Reason == condition.Reason && currentCond.Message == condition.Message {
 		return

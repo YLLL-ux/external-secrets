@@ -40,12 +40,26 @@ const (
 	msgStoreValidated = "store validated"
 )
 
-// ss与css使用相同的reconcile函数
-// 1.如果调谐完成则直接返回
-// 2.更新刷新时间
-// 3.验证ss（验证是否SecretsClient以及provider）
-// 4.设置status、记录event、设置Condition
-// 5.使用SecretsClient去patch status
+// reconcile 对ss和css进行调谐
+/* 入参
+- ctx：上下文对象，用于控制请求的生命周期
+- req：控制器请求对象，包含命名空间和名称等信息
+- ss：一个SecretStore对象
+- cl：k8s客户端，用于与API服务器交互
+- log：日志记录器
+- controllerClass：控制器类名，默认为default
+- gaugeVecGetter：用于获取指标的接口
+- requeueInterval：重新排队的时间间隔
+*/
+// 1.检查该store是否应该进行调谐，如果调谐完成则直接返回
+// 2.刷新刷新时间
+// 3.更新ss的Status为处理中
+// 4.验证ss
+// 5.获取ss的provider
+// 6.设置ss的status、设置Condition
+// 7.记录event
+// 8.更新ss的Condition
+// 9.返回结果，指定重新排队的时间间隔
 func reconcile(ctx context.Context, req ctrl.Request, ss esapi.GenericStore, cl client.Client, log logr.Logger,
 	controllerClass string, gaugeVecGetter metrics.GaugeVevGetter, recorder record.EventRecorder, requeueInterval time.Duration) (ctrl.Result, error) {
 	if !ShouldProcessStore(ss, controllerClass) {
@@ -61,7 +75,7 @@ func reconcile(ctx context.Context, req ctrl.Request, ss esapi.GenericStore, cl 
 	// patch status when done processing
 	p := client.MergeFrom(ss.Copy())
 	defer func() {
-		err := cl.Status().Patch(ctx, ss, p) // 更新ss的Status
+		err := cl.Status().Patch(ctx, ss, p) // 更新ss的Status为处理中
 		if err != nil {
 			log.Error(err, errPatchStatus)
 		}
